@@ -1105,15 +1105,17 @@
       }
       // allow retrigger later
       lastHotId = null;
-    }, 12000);
+    }, 4000);
   }
 
   function makePopup(card) {
     // example data per user's request (could be dynamic later)
     const username = "AAGUx1234x";
     const bonusTimes = "574";
-    const amount = "27,387";
+    const amount = "28,798.44"; // updated as requested
+    const bet = "50"; // bet amount to display
     const gameTitle = card.querySelector(".gsr-title")?.textContent || "เกม";
+    const imgSrc = card.querySelector("img")?.src || IMAGE_PLACEHOLDER;
 
     const overlay = document.createElement("div");
     overlay.className = "gsr-popup-overlay";
@@ -1123,15 +1125,23 @@
 
     const left = document.createElement("div");
     left.className = "left";
-    left.textContent = "BIG WIN";
+    // use game thumbnail image
+    const thumb = document.createElement("img");
+    thumb.src = imgSrc;
+    thumb.alt = gameTitle;
+    thumb.onerror = function () {
+      this.src = IMAGE_PLACEHOLDER;
+    };
+    left.appendChild(thumb);
 
     const body = document.createElement("div");
     body.className = "body";
     body.innerHTML = `
-      <h3>ขอแสดงความยินดีกับยูสเซอร์</h3>
+      <h3>GRAND899 ยินดีกับยูสเซอร์</h3>
       <p><strong>${username}</strong></p>
-      <p>Bonus x ${bonusTimes} เท่า</p>
-      <p style="font-size:18px;font-weight:900">${amount} บาท</p>
+      <p>ได้ Bonus x ${bonusTimes} เท่า</p>
+      <p style="font-size:18px;font-weight:900">${amount} ฿</p>
+      <p>Bet : ${bet} ฿</p>
       <p>จากเกม <span class="game">${gameTitle}</span></p>
     `;
 
