@@ -1205,6 +1205,81 @@
     MARQUEE.style.animation = `gsr-scroll ${SPEED}s linear infinite`;
   }
 
+  // Helper: pick N random games (distinct)
+  function pickRandomGames(n) {
+    if (!Array.isArray(games) || games.length === 0) return [];
+    const copy = games.slice();
+    // Fisher-Yates shuffle
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = copy[i];
+      copy[i] = copy[j];
+      copy[j] = tmp;
+    }
+    return copy.slice(0, Math.min(n, copy.length));
+  }
+
+  // Helper: render a batch of game cards into a container
+  function renderBatch(container, batch) {
+    if (!container) return;
+    // Clear previous
+    container.innerHTML = "";
+
+    const frag = document.createDocumentFragment();
+    // Append cards; duplicate once to help continuous marquee length
+    for (let repeat = 0; repeat < 2; repeat++) {
+      for (const g of batch) {
+        try {
+          const card = makeCard(g);
+          frag.appendChild(card);
+        } catch (e) {
+          // defensive: skip broken item
+          console.error("Failed to render card", g, e);
+        }
+      }
+    }
+    container.appendChild(frag);
+  }
+
+  // Helper: normalize/resolve image urls with fallback
+  function resolveImage(img) {
+    if (!img) return IMAGE_PLACEHOLDER;
+    try {
+      // force https when possible
+      if (typeof img === "string") {
+        return img.replace(/^http:\/\//i, "https://");
+      }
+    } catch (e) {
+      // noop
+    }
+    return IMAGE_PLACEHOLDER;
+  }
+
+  // Helper: obtain session value from cookies or localStorage
+  function getSession() {
+    // Check cookies
+    if (typeof document !== "undefined" && document.cookie) {
+      const parts = document.cookie.split(";").map((s) => s.trim());
+      for (const p of parts) {
+        const idx = p.indexOf("=");
+        if (idx === -1) continue;
+        const key = p.slice(0, idx).trim();
+        const value = p.slice(idx + 1).trim();
+        if (SESSION_KEYS.includes(key)) return decodeURIComponent(value);
+      }
+    }
+    // Check localStorage
+    try {
+      for (const k of SESSION_KEYS) {
+        const v = localStorage.getItem(k);
+        if (v) return v;
+      }
+    } catch (e) {
+      // localStorage might be unavailable in some contexts
+    }
+    return null;
+  }
+
   function updateBatch() {
     const batch = pickRandomGames(BATCH_SIZE);
     renderBatch(A, batch);
