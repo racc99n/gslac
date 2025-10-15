@@ -1021,7 +1021,7 @@
     // header centered on top
     const header = document.createElement("div");
     header.className = "gsr-popup-header";
-    header.innerHTML = `<h3>GRAND899 ยินดีกับยูสเซอร์</h3>`;
+    header.innerHTML = `<h3>GRAND899 ขอแสดงความยินดีกับยูสเซอร์</h3>`;
 
     const content = document.createElement("div");
     content.className = "gsr-popup-content";
@@ -1286,8 +1286,8 @@
     // We'll use weighted buckets: low(1-60) weight 1, mid(61-89) weight 5, high(90-100) weight 3
     const buckets = [
       { min: 1, max: 60, weight: 1 },
-      { min: 61, max: 89, weight: 5 },
-      { min: 90, max: 100, weight: 3 },
+      { min: 61, max: 89, weight: 7 },
+      { min: 90, max: 100, weight: 1 },
     ];
     const total = buckets.reduce((s, b) => s + b.weight, 0);
     let r = Math.random() * total;
@@ -1314,12 +1314,12 @@
 
   // bet: 1-100 most likely, 101-2000 unlikely
   function sampleBet() {
-    const commonWeight = 8;
+    const commonWeight = 9;
     const rareWeight = 1;
     if (Math.random() * (commonWeight + rareWeight) < commonWeight) {
-      return Math.floor(Math.random() * 100) + 1; // 1..100
+      return Math.floor(Math.random() * 200) + 1; // 1..100
     }
-    return Math.floor(Math.random() * (2000 - 101 + 1)) + 101; // 101..2000
+    return Math.floor(Math.random() * (2000 - 201 + 1)) + 201; // 101..2000
   }
 
   function updateBatch() {
