@@ -1257,6 +1257,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const charContainer = onlineNumberContainer.children[i];
+      // Defensive: if for any reason the child is missing, rebuild the display
+      if (!charContainer) {
+        createNumberDisplay(newNumberStr);
+        return;
+      }
       const oldCharSpan = charContainer.querySelector(
         '.char:not([class*="leave-"])'
       );
