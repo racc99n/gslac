@@ -7,8 +7,8 @@
   // ===============================
   // 🔧 CONFIG
   // ===============================
-  const LOGIN_URL = "https://gu899.tips/login";
-  const API_BASE = "https://api.gu899.tips/easy/game-enter2";
+  const LOGIN_URL = "https://grand899.tips/login";
+  const API_BASE = "https://grand899.tips/login";
   const VENDOR = "PGS";
   const TYPE = "slot";
   const SESSION_KEYS = ["sess", "session_id"];
@@ -1007,7 +1007,7 @@
   // 🧩 ฟังก์ชันสร้างการ์ด
   // ===============================
   function makeCard(g) {
-    const p = Math.floor(Math.random() * (98 - 50 + 1)) + 5; // สุ่ม winrate 50–98%
+    const p = Math.floor(Math.random() * (98 - 50 + 1)) + 40; // สุ่ม winrate 50–98%
 
     // 🔹 สร้าง element การ์ด
     const wrapper = document.createElement("a");
@@ -1059,6 +1059,105 @@
     return wrapper;
   }
 
+  // ===============================
+  // 🎯 Watcher: detect centered .hot card
+  // ===============================
+  let lastHotId = null;
+  function checkForCenteredHot() {
+    const hotCards = MARQUEE.querySelectorAll(".gsr-card.hot");
+    if (!hotCards || hotCards.length === 0) return;
+
+    const containerRect = ROOT.getBoundingClientRect();
+    const containerCenterX = containerRect.left + containerRect.width / 2;
+
+    for (const card of hotCards) {
+      const cardRect = card.getBoundingClientRect();
+      const cardCenterX = cardRect.left + cardRect.width / 2;
+      const delta = Math.abs(cardCenterX - containerCenterX);
+      // consider it centered when within 20px
+      if (delta <= 20) {
+        // avoid retriggering on same element
+        if (lastHotId === card) return;
+        lastHotId = card;
+        triggerBigWin(card);
+        return;
+      }
+    }
+  }
+
+  function triggerBigWin(card) {
+    // pause marquee via adding class on root
+    ROOT.classList.add("gsr-paused");
+
+    // enlarge card
+    card.classList.add("bigwin");
+
+    // show popup
+    const popup = makePopup(card);
+    document.body.appendChild(popup.overlay);
+
+    // resume after 2s
+    setTimeout(() => {
+      card.classList.remove("bigwin");
+      ROOT.classList.remove("gsr-paused");
+      if (popup && popup.overlay && popup.overlay.parentNode) {
+        popup.overlay.parentNode.removeChild(popup.overlay);
+      }
+      // allow retrigger later
+      lastHotId = null;
+    }, 2000);
+  }
+
+  function makePopup(card) {
+    // example data per user's request (could be dynamic later)
+    const username = "AAGUx1234x";
+    const bonusTimes = "574";
+    const amount = "27,387";
+    const gameTitle = card.querySelector(".gsr-title")?.textContent || "เกม";
+
+    const overlay = document.createElement("div");
+    overlay.className = "gsr-popup-overlay";
+
+    const p = document.createElement("div");
+    p.className = "gsr-popup";
+
+    const left = document.createElement("div");
+    left.className = "left";
+    left.textContent = "BIG WIN";
+
+    const body = document.createElement("div");
+    body.className = "body";
+    body.innerHTML = `
+      <h3>ขอแสดงความยินดีกับยูสเซอร์</h3>
+      <p><strong>${username}</strong></p>
+      <p>Bonus x ${bonusTimes} เท่า</p>
+      <p style="font-size:18px;font-weight:900">${amount} บาท</p>
+      <p>จากเกม <span class="game">${gameTitle}</span></p>
+    `;
+
+    p.appendChild(left);
+    p.appendChild(body);
+    overlay.appendChild(p);
+
+    return { overlay, popup: p };
+  }
+
+  // observe scroll / animation frame to check centered hot periodically
+  let checkInterval = null;
+  function startHotWatcher() {
+    if (checkInterval) return;
+    checkInterval = setInterval(checkForCenteredHot, 400);
+  }
+
+  function stopHotWatcher() {
+    if (!checkInterval) return;
+    clearInterval(checkInterval);
+    checkInterval = null;
+  }
+
+  // start after DOM ready and after initial rendering of marquees
+  window.addEventListener("load", () => startHotWatcher());
+
   if (!A || !B) {
     return;
   }
@@ -1086,3 +1185,95 @@
     setInterval(updateBatch, BATCH_INTERVAL);
   }
 })();
+
+document.addEventListener("DOMContentLoaded", () => {
+  const onlineNumberContainer = document.getElementById("onlineNumber");
+  let previousNumberString = "";
+
+  // Function to create the initial number display
+  function createNumberDisplay(numberStr) {
+    onlineNumberContainer.innerHTML = ""; // Clear previous content
+    for (const char of numberStr) {
+      const charContainer = document.createElement("div");
+      charContainer.className =
+        "char-container" + (char === "," ? " comma" : "");
+
+      const charSpan = document.createElement("span");
+      charSpan.className = "char";
+      charSpan.textContent = char;
+
+      charContainer.appendChild(charSpan);
+      onlineNumberContainer.appendChild(charContainer);
+    }
+    previousNumberString = numberStr;
+  }
+
+  // ... (คัดลอก JavaScript ที่เหลือทั้งหมดมาที่นี่) ...
+
+  // Function to update the number with animations
+  function updateNumberDisplay(newNumberStr) {
+    if (newNumberStr.length !== previousNumberString.length) {
+      createNumberDisplay(newNumberStr);
+      return;
+    }
+
+    for (let i = 0; i < newNumberStr.length; i++) {
+      const oldChar = previousNumberString[i];
+      const newChar = newNumberStr[i];
+
+      if (oldChar === newChar) {
+        continue;
+      }
+
+      const charContainer = onlineNumberContainer.children[i];
+      const oldCharSpan = charContainer.querySelector(
+        '.char:not([class*="leave-"])'
+      );
+      const isOldDigit = !isNaN(parseInt(oldChar));
+      const isNewDigit = !isNaN(parseInt(newChar));
+      const direction =
+        isOldDigit && isNewDigit && parseInt(newChar) > parseInt(oldChar)
+          ? "up"
+          : "down";
+
+      if (oldCharSpan) {
+        oldCharSpan.classList.add(`leave-${direction}`);
+        setTimeout(() => oldCharSpan.remove(), 500);
+      }
+
+      const newCharSpan = document.createElement("span");
+      newCharSpan.className = "char";
+      newCharSpan.textContent = newChar;
+      newCharSpan.classList.add(`enter-${direction}`);
+
+      charContainer.appendChild(newCharSpan);
+
+      requestAnimationFrame(() => {
+        newCharSpan.classList.remove(`enter-${direction}`);
+      });
+    }
+    previousNumberString = newNumberStr;
+  }
+
+  function runUpdateCycle() {
+    const centerValue = 75000;
+    const amplitude = 15000;
+    const time = Date.now();
+    const wave1 = Math.sin(time * 0.000003);
+    const wave2 = Math.sin(time * 0.000005);
+    const wave3 = Math.sin(time * 0.000001);
+    const combinedWave = wave1 * 0.5 + wave2 * 0.3 + wave3 * 0.2;
+    const fluctuation = combinedWave * amplitude;
+    const currentOnlineUsers = Math.floor(centerValue + fluctuation);
+    const newNumberString = currentOnlineUsers.toLocaleString("en-US");
+
+    if (previousNumberString === "") {
+      createNumberDisplay(newNumberString);
+    } else {
+      updateNumberDisplay(newNumberString);
+    }
+  }
+
+  runUpdateCycle();
+  setInterval(runUpdateCycle, 2500);
+});
