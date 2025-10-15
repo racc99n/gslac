@@ -1,9 +1,4 @@
 (function () {
-  const ROOT = document.querySelector(".gsr");
-  const SPEED = +ROOT.getAttribute("data-speed") || 100;
-  const OFFSET = +ROOT.getAttribute("data-offset") || 100;
-  ROOT.style.setProperty("--edge-offset", OFFSET + "px");
-
   // ===============================
   // 🔧 CONFIG
   // ===============================
@@ -15,14 +10,10 @@
   const IMAGE_PLACEHOLDER = "https://via.placeholder.com/180x120?text=No+Image";
   const IMAGE_BASE =
     "https://assets.g2gbet.co/gm-logo/img/sportsbook/game/PGS/L/";
-  const BATCH_SIZE = 10;
-  const BATCH_INTERVAL =
-    Math.max(
-      1,
-      +ROOT.getAttribute("data-batch-interval") ||
-        +ROOT.getAttribute("data-speed") ||
-        SPEED
-    ) * 1000;
+  const DEFAULT_SPEED = 100;
+  const DEFAULT_OFFSET = 100;
+  const DEFAULT_INTERVAL = 100;
+  const DEFAULT_BATCH_SIZE = 10;
 
   // ===============================
   // 🎮 รายชื่อเกม + ID + CODE
@@ -963,10 +954,6 @@
     },
   ];
 
-  const A = document.getElementById("gsrA"),
-    B = document.getElementById("gsrB"),
-    MARQUEE = document.querySelector(".gsr-marquee");
-
   function getSession() {
     for (const key of SESSION_KEYS) {
       const value = localStorage.getItem(key);
@@ -1007,7 +994,7 @@
   // 🧩 ฟังก์ชันสร้างการ์ด
   // ===============================
   function makeCard(g) {
-    const p = Math.floor(Math.random() * (98 - 50 + 1)) + 5; // สุ่ม winrate 50–98%
+    const p = Math.floor(Math.random() * (98 - 50 + 1)) + 50; // สุ่ม winrate 50–98%
 
     // 🔹 สร้าง element การ์ด
     const wrapper = document.createElement("a");
@@ -1059,30 +1046,104 @@
     return wrapper;
   }
 
-  if (!A || !B) {
-    return;
-  }
-
-  function applyMarqueeAnimation() {
-    if (!MARQUEE) {
+  function applyMarqueeAnimation(marquee, speed) {
+    if (!marquee) {
       return;
     }
-    MARQUEE.style.animation = "none";
-    void MARQUEE.offsetWidth; // force reflow so animation restarts
-    MARQUEE.style.animation = `gsr-scroll ${SPEED}s linear infinite`;
+    marquee.style.animation = "none";
+    void marquee.offsetWidth; // force reflow so animation restarts
+    marquee.style.animation = `gsr-scroll ${speed}s linear infinite`;
   }
 
-  function updateBatch() {
-    const batch = pickRandomGames(BATCH_SIZE);
-    renderBatch(A, batch);
-    renderBatch(B, batch);
-    applyMarqueeAnimation();
+  function initGsrWidget(root, options = {}) {
+    if (!root) {
+      return;
+    }
+
+    if (root._gsrCleanup) {
+      root._gsrCleanup();
+      root._gsrCleanup = null;
+    }
+
+    const speed =
+      Number(options.speed ?? root.dataset.speed ?? DEFAULT_SPEED) ||
+      DEFAULT_SPEED;
+    const offset =
+      Number(options.offset ?? root.dataset.offset ?? DEFAULT_OFFSET) ||
+      DEFAULT_OFFSET;
+    const intervalSeconds =
+      Number(options.interval ?? root.dataset.interval ?? speed) ||
+      DEFAULT_INTERVAL;
+    const batchSize =
+      Number(
+        options.batchSize ?? root.dataset.batchSize ?? DEFAULT_BATCH_SIZE
+      ) || DEFAULT_BATCH_SIZE;
+
+    root.classList.add("gsr");
+    root.style.setProperty("--edge-offset", `${offset}px`);
+
+    let marquee = root.querySelector(".gsr-marquee");
+    if (!marquee) {
+      root.innerHTML = `
+        <div class="gsr-marquee">
+          <div class="gsr-track"></div>
+          <div class="gsr-track"></div>
+        </div>
+      `;
+      marquee = root.querySelector(".gsr-marquee");
+    }
+
+    let tracks = marquee.querySelectorAll(".gsr-track");
+    if (tracks.length < 2) {
+      const needed = 2 - tracks.length;
+      for (let i = 0; i < needed; i++) {
+        const track = document.createElement("div");
+        track.className = "gsr-track";
+        marquee.appendChild(track);
+      }
+      tracks = marquee.querySelectorAll(".gsr-track");
+    }
+
+    const trackList = Array.from(tracks);
+
+    function updateBatch() {
+      const batch = pickRandomGames(batchSize);
+      trackList.forEach((track) => renderTrack(track, batch));
+      applyMarqueeAnimation(marquee, speed);
+    }
+
+    updateBatch();
+
+    let timer = null;
+    if (intervalSeconds > 0 && games.length > 0) {
+      timer = setInterval(updateBatch, intervalSeconds * 1000);
+    }
+
+    root._gsrCleanup = () => {
+      if (timer) {
+        clearInterval(timer);
+      }
+    };
+    root._gsrInitialized = true;
+    root.dataset.gsrInstance = root.dataset.gsrInstance || `${++widgetCounter}`;
   }
 
-  // แสดงทีละ 10 เกมและสุ่มชุดใหม่เป็นช่วงๆ
-  updateBatch();
+  function autoInit() {
+    const candidates = document.querySelectorAll(
+      ".gsr-widget, .gsr:not([data-gsr-noinit])"
+    );
+    candidates.forEach((root) => {
+      if (!root._gsrInitialized) {
+        initGsrWidget(root);
+      }
+    });
+  }
 
-  if (BATCH_INTERVAL > 0 && games.length > 0) {
-    setInterval(updateBatch, BATCH_INTERVAL);
+  window.initGsrWidget = initGsrWidget;
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", autoInit);
+  } else {
+    autoInit();
   }
 })();
