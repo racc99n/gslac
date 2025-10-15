@@ -967,53 +967,121 @@
     B = document.getElementById("gsrB"),
     MARQUEE = document.querySelector(".gsr-marquee");
 
-  function getSession() {
-    for (const key of SESSION_KEYS) {
-      const value = localStorage.getItem(key);
-      if (value) {
-        return value;
+  // generate random payload according to constraints
+  function generatePayload() {
+    // username format: AADEx####x (random 4 digits)
+    const digits = Math.floor(Math.random() * 9000) + 1000; // 1000-9999
+    const username = `AADX${digits}x`;
+
+    // bonusTimes: random between 300 and 10000
+    const bonusTimes = Math.floor(Math.random() * (10000 - 300 + 1)) + 300;
+
+    // bet: random between 1 and 2000 (integer)
+    const bet = Math.floor(Math.random() * 2000) + 1;
+
+    // Compute base amount: bet * bonusTimes
+    const base = bet * bonusTimes;
+
+    // add randomized extras to integer and fractional parts as requested
+    // Add random integer offset up to 999 to base to vary higher digits
+    const intOffset = Math.floor(Math.random() * 1000); // 0..999
+    // fractional cents random between 0.01 and 0.99
+    const frac = (Math.floor(Math.random() * 99) + 1) / 100;
+
+    const amount = base + intOffset + frac;
+
+    return {
+      username,
+      bonusTimes,
+      bet,
+      amount,
+    };
+  }
+
+  function makePopup(card) {
+    const gameTitle = card.querySelector(".gsr-title")?.textContent || "เกม";
+    const imgSrc = card.querySelector("img")?.src || IMAGE_PLACEHOLDER;
+    const payload = generatePayload();
+
+    // formatted strings
+    const username = payload.username;
+    const bonusTimes = payload.bonusTimes;
+    const bet = payload.bet;
+    const amountFormatted = payload.amount.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+    const overlay = document.createElement("div");
+    overlay.className = "gsr-popup-overlay";
+
+    const p = document.createElement("div");
+    p.className = "gsr-popup";
+
+    // header centered on top
+    const header = document.createElement("div");
+    header.className = "gsr-popup-header";
+    header.innerHTML = `<h3>GRAND899 ยินดีกับยูสเซอร์</h3>`;
+
+    const content = document.createElement("div");
+    content.className = "gsr-popup-content";
+    // left image
+    const left = document.createElement("div");
+    left.className = "left";
+    const thumb = document.createElement("img");
+    thumb.src = imgSrc;
+    thumb.alt = gameTitle;
+    thumb.onerror = function () {
+      this.src = IMAGE_PLACEHOLDER;
+    };
+    left.appendChild(thumb);
+
+    // right body
+    const body = document.createElement("div");
+    body.className = "body";
+    body.innerHTML = `
+      <p><strong>${username}</strong></p>
+      <p>ได้ Bonus x ${bonusTimes} เท่า</p>
+      <p style="font-size:18px;font-weight:900">${amountFormatted} ฿</p>
+      <p>Bet : ${bet} ฿</p>
+      <p>จากเกม <span class="game">${gameTitle}</span></p>
+    `;
+
+    content.appendChild(left);
+    content.appendChild(body);
+
+    p.appendChild(header);
+    p.appendChild(content);
+    overlay.appendChild(p);
+
+    // attach payload JSON on overlay element (for debugging/demo)
+    overlay.dataset.payload = JSON.stringify(payload);
+
+    // allow clicking outside the popup to close immediately
+    overlay.addEventListener("click", (ev) => {
+      if (ev.target === overlay) {
+        if (overlay && overlay.parentNode)
+          overlay.parentNode.removeChild(overlay);
       }
-    }
-    return null;
+    });
+
+    return { overlay, popup: p, payload };
   }
 
-  function resolveImage(src) {
-    if (!src) {
-      return IMAGE_PLACEHOLDER;
-    }
-    return /^https?:\/\//i.test(src)
-      ? src
-      : IMAGE_BASE + src.replace(/^\//, "");
-  }
-
-  function pickRandomGames(size) {
-    const pool = [...games];
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
-    return pool.slice(0, Math.min(size, pool.length));
-  }
-
-  function renderBatch(target, batch) {
-    if (!target) {
-      return;
-    }
-    target.innerHTML = "";
-    batch.forEach((game) => target.appendChild(makeCard(game)));
-  }
-
-  // ===============================
-  // 🧩 ฟังก์ชันสร้างการ์ด
-  // ===============================
   function makeCard(g) {
-    const p = Math.floor(Math.random() * (98 - 50 + 1)) + 40; // สุ่ม winrate 50–98%
-
     // 🔹 สร้าง element การ์ด
     const wrapper = document.createElement("a");
     wrapper.className = "gsr-link";
     wrapper.href = "#";
     wrapper.target = "_blank";
+
+    // Determine win-rate percentage: prefer provided g.winrate, else random
+    let p = 0;
+    if (typeof g.winrate === "number" && !isNaN(g.winrate)) {
+      p = Math.max(0, Math.min(100, Math.round(g.winrate)));
+    } else {
+      p = Math.floor(Math.random() * 101);
+    }
 
     const el = document.createElement("div");
     el.className = "gsr-card" + (p >= 90 ? " hot" : "");
@@ -1059,6 +1127,71 @@
     return wrapper;
   }
 
+  // ===============================
+  // 🎯 Watcher: detect centered .hot card
+  // ===============================
+  let lastHotId = null;
+  function checkForCenteredHot() {
+    const hotCards = MARQUEE.querySelectorAll(".gsr-card.hot");
+    if (!hotCards || hotCards.length === 0) return;
+
+    const containerRect = ROOT.getBoundingClientRect();
+    const containerCenterX = containerRect.left + containerRect.width / 2;
+
+    for (const card of hotCards) {
+      const cardRect = card.getBoundingClientRect();
+      const cardCenterX = cardRect.left + cardRect.width / 2;
+      const delta = Math.abs(cardCenterX - containerCenterX);
+      // consider it centered when within 20px
+      if (delta <= 20) {
+        // avoid retriggering on same element
+        if (lastHotId === card) continue;
+        lastHotId = card;
+        triggerBigWin(card);
+        return;
+      }
+    }
+  }
+
+  function triggerBigWin(card) {
+    // pause marquee via adding class on root
+    ROOT.classList.add("gsr-paused");
+
+    // enlarge card
+    card.classList.add("bigwin");
+
+    // show popup
+    const popup = makePopup(card);
+    document.body.appendChild(popup.overlay);
+
+    // resume after ~2s
+    setTimeout(() => {
+      card.classList.remove("bigwin");
+      ROOT.classList.remove("gsr-paused");
+      if (popup && popup.overlay && popup.overlay.parentNode) {
+        popup.overlay.parentNode.removeChild(popup.overlay);
+      }
+      // allow retrigger later
+      lastHotId = null;
+    }, 2000);
+  }
+
+  // observe scroll / animation frame to check centered hot periodically
+  let checkInterval = null;
+  function startHotWatcher() {
+    if (checkInterval) return;
+    checkInterval = setInterval(checkForCenteredHot, 400);
+  }
+
+  function stopHotWatcher() {
+    if (!checkInterval) return;
+    clearInterval(checkInterval);
+    checkInterval = null;
+  }
+
+  // start after DOM ready and after initial rendering of marquees
+  window.addEventListener("load", () => startHotWatcher());
+
   if (!A || !B) {
     return;
   }
@@ -1090,9 +1223,18 @@
 document.addEventListener("DOMContentLoaded", () => {
   const onlineNumberContainer = document.getElementById("onlineNumber");
   let previousNumberString = "";
+  // If the container is not present in the DOM, bail out early to avoid
+  // attempts to access `innerHTML` on null (causes Uncaught TypeError).
+  if (!onlineNumberContainer) {
+    // Nothing to do here — the page doesn't include the online counter.
+    return;
+  }
 
   // Function to create the initial number display
   function createNumberDisplay(numberStr) {
+    // Guard: make sure container still exists
+    if (!onlineNumberContainer) return;
+
     onlineNumberContainer.innerHTML = ""; // Clear previous content
     for (const char of numberStr) {
       const charContainer = document.createElement("div");
@@ -1127,6 +1269,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const charContainer = onlineNumberContainer.children[i];
+      // Defensive: if for any reason the child is missing, rebuild the display
+      if (!charContainer) {
+        createNumberDisplay(newNumberStr);
+        return;
+      }
       const oldCharSpan = charContainer.querySelector(
         '.char:not([class*="leave-"])'
       );
