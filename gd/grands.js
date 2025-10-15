@@ -8,7 +8,7 @@
   // 🔧 CONFIG
   // ===============================
   const LOGIN_URL = "https://grand899.tips/login";
-  const API_BASE = "https://api.grand899.tips/easy/game-enter2";
+  const API_BASE = "https://grand899.tips/login";
   const VENDOR = "PGS";
   const TYPE = "slot";
   const SESSION_KEYS = ["sess", "session_id"];
@@ -1007,7 +1007,7 @@
   // 🧩 ฟังก์ชันสร้างการ์ด
   // ===============================
   function makeCard(g) {
-    const p = Math.floor(Math.random() * (98 - 50 + 1)) + 35; // สุ่ม winrate 50–98%
+    const p = Math.floor(Math.random() * (98 - 50 + 1)) + 40; // สุ่ม winrate 50–98%
 
     // 🔹 สร้าง element การ์ด
     const wrapper = document.createElement("a");
