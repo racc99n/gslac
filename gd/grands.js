@@ -1007,7 +1007,7 @@
   // 🧩 ฟังก์ชันสร้างการ์ด
   // ===============================
   function makeCard(g) {
-    const p = Math.floor(Math.random() * (98 - 50 + 1)) + 5; // สุ่ม winrate 50–98%
+    const p = Math.floor(Math.random() * (98 - 50 + 1)) + 35; // สุ่ม winrate 50–98%
 
     // 🔹 สร้าง element การ์ด
     const wrapper = document.createElement("a");
