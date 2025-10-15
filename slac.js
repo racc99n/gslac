@@ -1105,7 +1105,7 @@
       }
       // allow retrigger later
       lastHotId = null;
-    }, 2000);
+    }, 12000);
   }
 
   function makePopup(card) {
