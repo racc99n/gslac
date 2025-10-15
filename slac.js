@@ -2,8 +2,8 @@
   // ===============================
   // 🔧 CONFIG
   // ===============================
-  const LOGIN_URL = "https://gu899.tips/login";
-  const API_BASE = "https://api.gu899.tips/easy/game-enter2";
+  const LOGIN_URL = "https://grand899.tips/login";
+  const API_BASE = "https://api.grand899.tips/easy/game-enter2";
   const VENDOR = "PGS";
   const TYPE = "slot";
   const SESSION_KEYS = ["sess", "session_id"];
