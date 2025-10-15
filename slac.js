@@ -973,11 +973,11 @@
     const digits = Math.floor(Math.random() * 9000) + 1000; // 1000-9999
     const username = `AADX${digits}x`;
 
-    // bonusTimes: random between 300 and 10000
-    const bonusTimes = Math.floor(Math.random() * (10000 - 300 + 1)) + 300;
+    // bonusTimes: biased sampling (300-1000 most likely, 1001-10000 very unlikely)
+    const bonusTimes = sampleBonusTimes();
 
-    // bet: random between 1 and 2000 (integer)
-    const bet = Math.floor(Math.random() * 2000) + 1;
+    // bet: biased sampling (1-100 most likely, 101-2000 unlikely)
+    const bet = sampleBet();
 
     // Compute base amount: bet * bonusTimes
     const base = bet * bonusTimes;
@@ -1075,12 +1075,12 @@
     wrapper.href = "#";
     wrapper.target = "_blank";
 
-    // Determine win-rate percentage: prefer provided g.winrate, else random
+    // Determine win-rate percentage: prefer provided g.winrate, else biased sample
     let p = 0;
     if (typeof g.winrate === "number" && !isNaN(g.winrate)) {
       p = Math.max(0, Math.min(100, Math.round(g.winrate)));
     } else {
-      p = Math.floor(Math.random() * 101);
+      p = sampleWinrate();
     }
 
     const el = document.createElement("div");
@@ -1278,6 +1278,48 @@
       // localStorage might be unavailable in some contexts
     }
     return null;
+  }
+
+  // ----- Biased samplers requested by user -----
+  // winrate: 1-60% least likely, 61-89% most likely, 90-100% medium
+  function sampleWinrate() {
+    // We'll use weighted buckets: low(1-60) weight 1, mid(61-89) weight 5, high(90-100) weight 3
+    const buckets = [
+      { min: 1, max: 60, weight: 1 },
+      { min: 61, max: 89, weight: 5 },
+      { min: 90, max: 100, weight: 3 },
+    ];
+    const total = buckets.reduce((s, b) => s + b.weight, 0);
+    let r = Math.random() * total;
+    for (const b of buckets) {
+      if (r < b.weight) {
+        return Math.floor(Math.random() * (b.max - b.min + 1)) + b.min;
+      }
+      r -= b.weight;
+    }
+    // fallback
+    return Math.floor(Math.random() * 100) + 1;
+  }
+
+  // bonusTimes: 300-1000 most likely, 1001-10000 very unlikely
+  function sampleBonusTimes() {
+    // We'll use two ranges: common 300-1000 (weight 9), rare 1001-10000 (weight 1)
+    const commonWeight = 9;
+    const rareWeight = 1;
+    if (Math.random() * (commonWeight + rareWeight) < commonWeight) {
+      return Math.floor(Math.random() * (1000 - 300 + 1)) + 300;
+    }
+    return Math.floor(Math.random() * (10000 - 1001 + 1)) + 1001;
+  }
+
+  // bet: 1-100 most likely, 101-2000 unlikely
+  function sampleBet() {
+    const commonWeight = 8;
+    const rareWeight = 1;
+    if (Math.random() * (commonWeight + rareWeight) < commonWeight) {
+      return Math.floor(Math.random() * 100) + 1; // 1..100
+    }
+    return Math.floor(Math.random() * (2000 - 101 + 1)) + 101; // 101..2000
   }
 
   function updateBatch() {
